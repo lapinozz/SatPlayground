@@ -220,7 +220,7 @@ const PatternEditor = (props) => {
 			{
 				<g>
 				{
-					getOption('') && (() =>
+					getOption('showAxes') && (() =>
 					{
 						const results = [];
 
