@@ -1,0 +1,29 @@
+body {
+  background-color:#888;
+  color:#fff;
+}
+
+.svg-view
+{
+  background-color: #eee;
+
+  polygon
+  {
+    filter: saturate(0.5);
+  }
+
+  circle:hover
+  {
+    filter: brightness(1.5);
+  }
+
+  polygon:hover
+  {
+    filter: saturate(1);
+  }
+
+  .project-line
+  {
+    filter: brightness(0.75);
+  }
+}
