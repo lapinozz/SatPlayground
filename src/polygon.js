@@ -4,6 +4,7 @@ export default class Polygon
 {
 	#points = [];
 	#pos =  new Vec();
+	#color = '';
 
 	constructor()
 	{

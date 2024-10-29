@@ -57,12 +57,10 @@ function LineView(props)
 }
 
 const PatternEditor = (props) => {
-	const {getOption} = props; 
+	const {getOption, polygons, updatePolygons} = props; 
 
 	const [view, setView] = useState({zoom: 2, center: new Vec(50, 50)});
 	const [size, setSize] = useState(new Vec(1200, 800));
-
-	const polygons = props.polygons.map(p => usePolygon(p));
 
 	const [hover, setHover] = useState(null);
 
@@ -109,11 +107,13 @@ const PatternEditor = (props) => {
 			const pt = pts[dragTarget.current.getAttribute('i')];
 			pts[dragTarget.current.getAttribute('i')] = pt.add(delta.div(view.zoom));
 			polygon.setPoints(pts);
+			updatePolygons();
 		}
 		else if(dragTarget.current.getAttribute('type') == 'poly')
 		{
 			const polygon = polygons[dragTarget.current.getAttribute('p')];
 			polygon.setPos(polygon.getPos().add(delta.div(view.zoom)));
+			updatePolygons();
 		}
 		else
 		{
@@ -139,6 +139,7 @@ const PatternEditor = (props) => {
 		{
 			const polygon = polygons[target.getAttribute('p')];
 			polygon.addPoint(screenPosToSvgPos(currentPos).sub(polygon.getPos()), parseInt(target.getAttribute('e')));
+			updatePolygons();
 		}
 		else if(target.getAttribute('type') == 'poly-point')
 		{
@@ -151,6 +152,7 @@ const PatternEditor = (props) => {
 
 			pts.splice(parseInt(target.getAttribute('i')), 1);
 			polygon.setPoints(pts);
+			updatePolygons();
 		}
 	};
 
@@ -284,20 +286,66 @@ const PatternEditor = (props) => {
 	);
 }
 
-const polygons = [new Polygon(), new Polygon()];
+function getSavedPolygons()
+{
+	try
+	{
+		const polygons = JSON.parse(localStorage.getItem('polygons'));
+		return polygons.map(p => 
+		{
+			const polygon = new Polygon();
+			polygon.setPos(new Vec(p.pos));
+			polygon.setPoints(p.points.map(point => new Vec(point)));
+			polygon.color = p.color;
+			return polygon;
+		});
+	}
+	catch(e)
+	{
 
-polygons[0].color = 'orange';
-polygons[0].addPoint(new Vec(-25, -25))
-polygons[0].addPoint(new Vec(25, -10))
-polygons[0].addPoint(new Vec(18, 25))
-polygons[0].addPoint(new Vec(-18, 28))
-polygons[0].setPos(new Vec(25, 25));
+	}
 
-polygons[1].color = 'blue';
-polygons[1].addPoint(new Vec(-18, 25))
-polygons[1].addPoint(new Vec(25, -25))
-polygons[1].addPoint(new Vec(25, 10))
-polygons[1].setPos(new Vec(-25, -25));
+	return null;
+}
+
+function savePolygons(polygons)
+{
+	const data = polygons.map(p =>
+	{
+		return {
+			pos: p.getPos(),
+			points: p.getPoints(),
+			color: p.color
+		};
+	})
+	localStorage.setItem('polygons', JSON.stringify(data));
+}
+
+function createPolygons(tryLoad = true)
+{
+	let polygons = tryLoad && getSavedPolygons();
+	if(polygons)
+	{
+		return polygons;
+	}
+
+	polygons = [new Polygon(), new Polygon()];
+
+	polygons[0].color = 'orange';
+	polygons[0].addPoint(new Vec(-25, -25))
+	polygons[0].addPoint(new Vec(25, -10))
+	polygons[0].addPoint(new Vec(18, 25))
+	polygons[0].addPoint(new Vec(-18, 28))
+	polygons[0].setPos(new Vec(25, 25));
+
+	polygons[1].color = 'blue';
+	polygons[1].addPoint(new Vec(-18, 25))
+	polygons[1].addPoint(new Vec(25, -25))
+	polygons[1].addPoint(new Vec(25, 10))
+	polygons[1].setPos(new Vec(-25, -25));
+
+	return polygons;
+}
 
 const collisionTypes = {
 	mtv: "Static",
@@ -307,7 +355,7 @@ const collisionTypes = {
 
 const Header = (props) =>
 {	
-	const {getOption, setOption, resetOptions} = props;
+	const {getOption, setOption, reset} = props;
 
 	return (
 		<div className="header">
@@ -322,7 +370,7 @@ const Header = (props) =>
 
 			<input type="checkbox" checked={getOption('showAxes')} onChange={()=>setOption('showAxes', !getOption('showAxes'))} />
 
-			<input type="button" value="Reset" onClick={resetOptions}/>
+			<input type="button" value="Reset" onClick={reset}/>
 		</div>
 	);
 }
@@ -336,10 +384,24 @@ const App = () =>
 {
 	const {setOption, getOption, resetOptions} = useOptions(defaultOptions);
 
+	const [polygons, setPolygons] = useState(createPolygons);
+	savePolygons(polygons);
+
+	const reset = () =>
+	{
+		resetOptions();
+		setPolygons(createPolygons(false));
+	};
+
+	const updatePolygons = () =>
+	{
+		setPolygons([...polygons]);
+	};
+
 	return (
 		<div className="container">
-			<Header getOption={getOption} resetOptions={resetOptions} setOption={setOption} />
-			<PatternEditor  polygons={polygons} getOption={getOption}/>
+			<Header getOption={getOption} setOption={setOption} reset={reset} />
+			<PatternEditor polygons={polygons} updatePolygons={updatePolygons} getOption={getOption}/>
 		</div>
 	);
 }
