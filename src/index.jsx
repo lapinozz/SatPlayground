@@ -13,7 +13,7 @@ import useGlobalDOMEvents from './utils/useGlobalDOMEvents';
 import Polygon from './polygon';
 import Sat, {project} from './sat';
 
-const usePolygon = hookify(Polygon);
+const [usePolygon, usePolygons] = hookify(Polygon);
 
 function PolygonView({polygon, i, opacity})
 {
@@ -57,7 +57,7 @@ function LineView(props)
 }
 
 const PatternEditor = (props) => {
-	const {getOption, polygons, updatePolygons} = props; 
+	const {getOption, polygons} = props; 
 
 	const [view, setView] = useState({zoom: 2, center: new Vec(50, 50)});
 	const [size, setSize] = useState(new Vec(1200, 800));
@@ -107,13 +107,11 @@ const PatternEditor = (props) => {
 			const pt = pts[dragTarget.current.getAttribute('i')];
 			pts[dragTarget.current.getAttribute('i')] = pt.add(delta.div(view.zoom));
 			polygon.setPoints(pts);
-			updatePolygons();
 		}
 		else if(dragTarget.current.getAttribute('type') == 'poly')
 		{
 			const polygon = polygons[dragTarget.current.getAttribute('p')];
 			polygon.setPos(polygon.getPos().add(delta.div(view.zoom)));
-			updatePolygons();
 		}
 		else
 		{
@@ -139,7 +137,6 @@ const PatternEditor = (props) => {
 		{
 			const polygon = polygons[target.getAttribute('p')];
 			polygon.addPoint(screenPosToSvgPos(currentPos).sub(polygon.getPos()), parseInt(target.getAttribute('e')));
-			updatePolygons();
 		}
 		else if(target.getAttribute('type') == 'poly-point')
 		{
@@ -152,7 +149,6 @@ const PatternEditor = (props) => {
 
 			pts.splice(parseInt(target.getAttribute('i')), 1);
 			polygon.setPoints(pts);
-			updatePolygons();
 		}
 	};
 
@@ -296,7 +292,7 @@ function getSavedPolygons()
 			const polygon = new Polygon();
 			polygon.setPos(new Vec(p.pos));
 			polygon.setPoints(p.points.map(point => new Vec(point)));
-			polygon.color = p.color;
+			polygon.setColor(p.color);
 			return polygon;
 		});
 	}
@@ -315,7 +311,7 @@ function savePolygons(polygons)
 		return {
 			pos: p.getPos(),
 			points: p.getPoints(),
-			color: p.color
+			color: p.getColor()
 		};
 	})
 	localStorage.setItem('polygons', JSON.stringify(data));
@@ -331,14 +327,14 @@ function createPolygons(tryLoad = true)
 
 	polygons = [new Polygon(), new Polygon()];
 
-	polygons[0].color = 'orange';
+	polygons[0].setColor('orange');
 	polygons[0].addPoint(new Vec(-25, -25))
 	polygons[0].addPoint(new Vec(25, -10))
 	polygons[0].addPoint(new Vec(18, 25))
 	polygons[0].addPoint(new Vec(-18, 28))
 	polygons[0].setPos(new Vec(25, 25));
 
-	polygons[1].color = 'blue';
+	polygons[1].setColor('blue');
 	polygons[1].addPoint(new Vec(-18, 25))
 	polygons[1].addPoint(new Vec(25, -25))
 	polygons[1].addPoint(new Vec(25, 10))
@@ -384,24 +380,19 @@ const App = () =>
 {
 	const {setOption, getOption, resetOptions} = useOptions(defaultOptions);
 
-	const [polygons, setPolygons] = useState(createPolygons);
+	const polygons = usePolygons(createPolygons);
 	savePolygons(polygons);
 
 	const reset = () =>
 	{
 		resetOptions();
-		setPolygons(createPolygons(false));
-	};
-
-	const updatePolygons = () =>
-	{
-		setPolygons([...polygons]);
+		polygons.splice(0, polygons.length, ...createPolygons(false));
 	};
 
 	return (
 		<div className="container">
 			<Header getOption={getOption} setOption={setOption} reset={reset} />
-			<PatternEditor polygons={polygons} updatePolygons={updatePolygons} getOption={getOption}/>
+			<PatternEditor polygons={polygons} getOption={getOption}/>
 		</div>
 	);
 }

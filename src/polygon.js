@@ -17,7 +17,7 @@ export default class Polygon
 		const polygon = new Polygon();
 		polygon.setPos(this.getPos());
 		polygon.setPoints(this.getPoints());
-		polygon.color = this.getColor();
+		polygon.setColor(this.getColor());
 		return polygon;
 	}
 
@@ -86,8 +86,13 @@ export default class Polygon
 		return false;	
 	}
 
+	setColor(color)
+	{
+		this.#color = color;
+	}
+
 	getColor()
 	{
-		return this.color;
+		return this.#color;
 	}
 }
