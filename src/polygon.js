@@ -5,20 +5,38 @@ export default class Polygon
 	#points = [];
 	#pos =  new Vec();
 	#color = '';
+	#vel = new Vec();
 
 	constructor()
 	{
 
 	}
 
+	static fromData(data)
+	{
+		const polygon = new Polygon();
+		polygon.setPos(new Vec(data.pos));
+		polygon.setPoints(data.points.map(point => new Vec(point)));
+		polygon.setColor(data.color);
+		polygon.setVel(new Vec(data.vel));
+		return polygon;
+	}
+
+	static toData_mut = false;
+	toData()
+	{
+		return {
+			pos: this.getPos(),
+			points: this.getPoints(),
+			color: this.getColor(),
+			vel: this.getVel()
+		};
+	}
+
 	static clone_mut = false;
 	clone()
 	{
-		const polygon = new Polygon();
-		polygon.setPos(this.getPos());
-		polygon.setPoints(this.getPoints());
-		polygon.setColor(this.getColor());
-		return polygon;
+		return Polygon.fromData(this.toData());
 	}
 
 	getPos()
@@ -94,5 +112,15 @@ export default class Polygon
 	getColor()
 	{
 		return this.#color;
+	}
+
+	setVel(vel)
+	{
+		this.#vel = vel.clone();
+	}
+
+	getVel()
+	{
+		return this.#vel.clone();
 	}
 }

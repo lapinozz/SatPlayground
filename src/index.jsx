@@ -51,6 +51,23 @@ function PolygonView({polygon, i, opacity})
 	</g>;
 }
 
+function PolygonVelView({polygon, i})
+{
+	const start = polygon.getPos();
+	const end = polygon.getPos().add(polygon.getVel());
+	return  [
+		<LineView
+	        id='arrow-line'
+	        markerEnd='url(#arrowHead)'
+	        strokeWidth='2'
+	        fill='none' stroke='black'
+	        p1={start}
+	        p2={end}
+		/>,
+  		<path type="poly-vel" p={i} d='M-2,0 L2,4 L2,-4 Z' fill="black" transform={`translate(${end.x} ${end.y}) scale(1 1) rotate(${polygon.getVel().toAngle() + 180} 0 0)`}/>
+  ];
+}
+
 function LineView(props)
 {
 	return <line {...props} x1={props.p1.x} y1={props.p1.y} x2={props.p2.x} y2={props.p2.y} />;
@@ -107,6 +124,11 @@ const PatternEditor = (props) => {
 			const pt = pts[dragTarget.current.getAttribute('i')];
 			pts[dragTarget.current.getAttribute('i')] = pt.add(delta.div(view.zoom));
 			polygon.setPoints(pts);
+		}
+		else if(dragTarget.current.getAttribute('type') == 'poly-vel')
+		{
+			const polygon = polygons[dragTarget.current.getAttribute('p')];
+			polygon.setVel(polygon.getVel().add(delta.div(view.zoom)));
 		}
 		else if(dragTarget.current.getAttribute('type') == 'poly')
 		{
@@ -169,7 +191,16 @@ const PatternEditor = (props) => {
 	const viewBoxSize = size.div(view.zoom);
 	const viewBoxStr = `${view.center.x - viewBoxSize.x / 2} ${view.center.y - viewBoxSize.y / 2} ${viewBoxSize.x} ${viewBoxSize.y}`;
 
-	const collides = Sat.test(polygons[0], polygons[1]);
+	const velA = getOption('collisionType') != 'mtv' ? polygons[0].getVel() : null;
+	const velB = getOption('collisionType') == 'doubleSweep' ? polygons[1].getVel() : null;
+
+	const tests = {
+		mtv: Sat.test,
+		sweep: Sat.testSweep,
+		doubleSweep: Sat.testDoubleSweep,
+	}
+
+	const collides = tests[getOption('collisionType')](polygons[0], polygons[1], velA, velB);
 
 	return (
 		<svg ref={svgRef} 
@@ -179,8 +210,20 @@ const PatternEditor = (props) => {
 			viewBox={viewBoxStr} 
 			height={size.y} 
 			width={size.x} >
+		      <defs>
+		        <marker 
+		          id='arrowHead' 
+		          orient="auto" 
+		          markerWidth='3' 
+		          markerHeight='4' 
+		          refX='0.1' 
+		          refY='2'
+		        >
+		        </marker>
+		      </defs>
+
 			{
-				collides.collide && (() =>
+				collides.collide && collides.mtv && (() =>
 				{
 					const mtv = collides.mtv;
 					const poly = polygons[1].clone();
@@ -190,10 +233,27 @@ const PatternEditor = (props) => {
 			}
 
 			{
+				collides.maxTime && (() =>
+				{
+					const poly = polygons[0].clone();
+					poly.setPos(poly.getPos().add(poly.getVel().mul(collides.maxTime)));
+					return <PolygonView polygon={poly}/>;
+				})()
+			}
+
+			{
 				polygons.map((p, i) =>
 				{
 					return <PolygonView key={i} polygon={p} i={i} opacity={collides.collide ? 0.5 : 1}/>;
 				})
+			}
+
+			{
+				velA && <PolygonVelView polygon={polygons[0]} i={0} />
+			}
+
+			{
+				velB && <PolygonVelView polygon={polygons[1]} i={1} />
 			}
 
 			{
@@ -234,7 +294,7 @@ const PatternEditor = (props) => {
 
 							const a = origin.add(axis.normal.mul(-1000));
 							const b = origin.add(axis.normal.mul(1000));
-							const doesOverlap = Math.abs(axis.overlap) > 0;
+							const doesOverlap = axis.overlap > 0;
 
 							const isHovered = hover && hover.getAttribute('type') == 'axis' && hover.getAttribute('i') == i;
 
@@ -287,18 +347,10 @@ function getSavedPolygons()
 	try
 	{
 		const polygons = JSON.parse(localStorage.getItem('polygons'));
-		return polygons.map(p => 
-		{
-			const polygon = new Polygon();
-			polygon.setPos(new Vec(p.pos));
-			polygon.setPoints(p.points.map(point => new Vec(point)));
-			polygon.setColor(p.color);
-			return polygon;
-		});
+		return polygons.map(Polygon.fromData);
 	}
 	catch(e)
 	{
-
 	}
 
 	return null;
@@ -306,15 +358,9 @@ function getSavedPolygons()
 
 function savePolygons(polygons)
 {
-	const data = polygons.map(p =>
-	{
-		return {
-			pos: p.getPos(),
-			points: p.getPoints(),
-			color: p.getColor()
-		};
-	})
+	const data = polygons.map(p => p.toData());
 	localStorage.setItem('polygons', JSON.stringify(data));
+
 }
 
 function createPolygons(tryLoad = true)
@@ -328,17 +374,19 @@ function createPolygons(tryLoad = true)
 	polygons = [new Polygon(), new Polygon()];
 
 	polygons[0].setColor('orange');
-	polygons[0].addPoint(new Vec(-25, -25))
-	polygons[0].addPoint(new Vec(25, -10))
-	polygons[0].addPoint(new Vec(18, 25))
-	polygons[0].addPoint(new Vec(-18, 28))
+	polygons[0].addPoint(new Vec(-25, -25));
+	polygons[0].addPoint(new Vec(25, -10));
+	polygons[0].addPoint(new Vec(18, 25));
+	polygons[0].addPoint(new Vec(-18, 28));
 	polygons[0].setPos(new Vec(25, 25));
+	polygons[0].setVel(new Vec(25, -100));
 
 	polygons[1].setColor('blue');
-	polygons[1].addPoint(new Vec(-18, 25))
-	polygons[1].addPoint(new Vec(25, -25))
-	polygons[1].addPoint(new Vec(25, 10))
+	polygons[1].addPoint(new Vec(-18, 25));
+	polygons[1].addPoint(new Vec(25, -25));
+	polygons[1].addPoint(new Vec(25, 10));
 	polygons[1].setPos(new Vec(-25, -25));
+	polygons[1].setVel(new Vec(-25, 100));
 
 	return polygons;
 }

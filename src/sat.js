@@ -13,40 +13,44 @@ class Overlap
 
 	getOverlap(other)
 	{
-		if(!this.doesOverlap(other))
+		if(this.doesOverlap(other))
 		{
-			return 0;
-		}
-
-		if (this.min < other.min)
-		{
-			if (this.max < other.max)
+			if (this.min < other.min)
 			{
-				return this.max - other.min;
+				if (this.max < other.max)
+				{
+					return this.max - other.min;
+				}
+				else
+				{
+					const option1 = this.max - other.min;
+					const option2 = other.max - this.min;
+					return option1 < option2 ? option1 : -option2;
+				}
 			}
 			else
 			{
-				const option1 = this.max - other.min;
-				const option2 = other.max - this.min;
-				return option1 < option2 ? option1 : -option2;
-			}
+				if (this.max > other.max)
+				{
+					return this.min - other.max;
+				}
+				else
+				{
+					const option1 = this.max - other.min;
+					const option2 = other.max - this.min;
+					return option1 < option2 ? option1 : -option2;
+				}
+			}	
 		}
 		else
 		{
-			if (this.max > other.max)
-			{
-				return this.min - other.max;
-			}
-			else
-			{
-				const option1 = this.max - other.min;
-				const option2 = other.max - this.min;
-				return option1 < option2 ? option1 : -option2;
-			}
-		}		
-
-		console.error("Bad case in getOverlap!");
-		return 0;
+			return -Math.min(
+				Math.abs(this.min - other.min),
+				Math.abs(this.min - other.max),
+				Math.abs(this.max - other.min),
+				Math.abs(this.max - other.max),
+			);
+		}
 	}
 }
 
@@ -68,7 +72,7 @@ function getAxes(polygon)
 	return axes;
 }
 
-export function project(axis, polygon)
+export function project(axis, polygon, vel)
 {
 	const pts = polygon.getAbsolutePoints();
 	let min = axis.dot(pts[0]);
@@ -131,33 +135,6 @@ function best(polygon, mtv)
 	}
 }
 
-function clip(n, c, pts)
-{
-  let sp = 0;
-  let out = [pts[0], pts[1]];
-
-  // Retrieve distances from each endpoint to the line
-  // d = ax + by - c
-  const d1 = n.dot(pts[0]) - c;
-  const d2 = n.dot(pts[1]) - c;
-
-  // If negative (behind plane) clip
-  if(d1 <= 0) out[sp++] = pts[0];
-  if(d2 <= 0) out[sp++] = pts[1];
-  
-  // If the points are on different sides of the plane
-  if(d1 * d2 < 0) // less than to ignore -0.0f
-  {
-    // Push interesection point
-    const alpha = d1 / (d1 - d2);
-    out[sp] = pts[0].add(pts[1].sub(pts[0]).mul(alpha));
-    ++sp;
-  }
-
-  // Assign our new converted values
-  pts.splice(0, 10, ...out);
-}
-
 // clips the line segment points v1, v2
 // if they are past o along n
 function clipPoints(v1, v2, n, o)
@@ -189,7 +166,7 @@ function clipPoints(v1, v2, n, o)
   return cp;
 }
 
-function findCollisionPoints(a, b, mtv)
+function findCollisionPoints(a, b, mtv, filterPoints = true)
 {
 	// find the "best" edge for shape A
 	let ref = best(a, mtv.normal);
@@ -241,18 +218,21 @@ function findCollisionPoints(a, b, mtv)
 		refNorm = refNorm.neg();
 	}
 
-	// get the largest depth
-	const max = refNorm.dot(ref.max);
-
-	// make sure the final points are not past this maximum
-	if (refNorm.dot(cp[1]) - max < 0)
+	if(filterPoints)
 	{
-	  cp.splice(1, 1);
-	}
+		// get the largest depth
+		const max = refNorm.dot(ref.max);
 
-	if (refNorm.dot(cp[0]) - max < 0)
-	{
-	  cp.splice(0, 1);
+		// make sure the final points are not past this maximum
+		if (refNorm.dot(cp[1]) - max < 0)
+		{
+		  cp.splice(1, 1);
+		}
+
+		if (refNorm.dot(cp[0]) - max < 0)
+		{
+		  cp.splice(0, 1);
+		}
 	}
 
 	return {...result, contacts: cp};
@@ -302,5 +282,66 @@ export default class Sat
 		const {contacts, refFace, incFace} = findCollisionPoints(a, b, mtv);
 
 		return {axes, collide, a, b, mtv, contacts, refFace, incFace};
+	}
+
+	static testSweep(a, b, velA)
+	{
+		const axes = [...getAxes(a), ...getAxes(b)];
+
+		const velocityAxis = {
+			a: a.getPos(), b: a.getPos().add(velA),
+			normal: velA.perp().normalize(),
+			color: a.getColor(),
+			poly: a
+		};
+
+		axes.push(velocityAxis);
+		
+		let collide = true;
+
+		let maxTime = null;
+
+		for(const axis of axes)
+		{
+			const p1 = project(axis.normal, a);
+			const p2 = project(axis.normal, b);
+
+			axis.p1 = p1;
+			axis.p2 = p2;
+			axis.overlap = p1.getOverlap(p2);
+
+			if (p1.doesOverlap(p2))
+			{
+				if(maxTime === null)
+				{
+					maxTime = 0;
+				}
+			}
+			else
+			{
+				const velDot = axis.normal.dot(velA);
+				const p3 = new Overlap(Math.min(p1.min, p1.min + velDot), Math.max(p1.max, p1.max + velDot));
+				if(p3.doesOverlap(p2) && (velDot >= -axis.overlap || velDot <= axis.overlap))
+				{
+					const time = Math.abs(-axis.overlap / velDot);
+					if(maxTime === null || time > maxTime)
+					{
+						maxTime = time;
+					}
+				}
+				else 
+				{
+					collide = false;
+				}
+			}
+		}
+
+		if(maxTime === null || !collide)
+		{
+			maxTime = 1;
+		}
+		maxTime = Math.max(Math.min(maxTime, 1), 0);
+
+		return {axes, collide, a, b, maxTime, ...findCollisionPoints(a, b, velocityAxis, false)};
 	}
 }
