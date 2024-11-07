@@ -1,3 +1,5 @@
+import Vec from './utils/vec';
+
 class Overlap
 {
 	constructor(min, max)
@@ -13,44 +15,52 @@ class Overlap
 
 	getOverlap(other)
 	{
-		if(this.doesOverlap(other))
+		if(!this.doesOverlap(other))
 		{
-			if (this.min < other.min)
+			return 0;
+		}
+
+		if (this.min < other.min)
+		{
+			if (this.max < other.max)
 			{
-				if (this.max < other.max)
-				{
-					return this.max - other.min;
-				}
-				else
-				{
-					const option1 = this.max - other.min;
-					const option2 = other.max - this.min;
-					return option1 < option2 ? option1 : -option2;
-				}
+				return this.max - other.min;
 			}
 			else
 			{
-				if (this.max > other.max)
-				{
-					return this.min - other.max;
-				}
-				else
-				{
-					const option1 = this.max - other.min;
-					const option2 = other.max - this.min;
-					return option1 < option2 ? option1 : -option2;
-				}
-			}	
+				const option1 = this.max - other.min;
+				const option2 = other.max - this.min;
+				return option1 < option2 ? option1 : -option2;
+			}
 		}
 		else
 		{
-			return -Math.min(
-				Math.abs(this.min - other.min),
-				Math.abs(this.min - other.max),
-				Math.abs(this.max - other.min),
-				Math.abs(this.max - other.max),
-			);
+			if (this.max > other.max)
+			{
+				return this.min - other.max;
+			}
+			else
+			{
+				const option1 = this.max - other.min;
+				const option2 = other.max - this.min;
+				return option1 < option2 ? option1 : -option2;
+			}
+		}	
+	}
+
+	getDistance(other)
+	{
+		if(this.doesOverlap(other))
+		{
+			return 0;
 		}
+
+		return -Math.min(
+			Math.abs(this.min - other.min),
+			Math.abs(this.min - other.max),
+			Math.abs(this.max - other.min),
+			Math.abs(this.max - other.max),
+		);
 	}
 }
 
@@ -256,6 +266,7 @@ export default class Sat
 			axis.p1 = p1;
 			axis.p2 = p2;
 			axis.overlap = p1.getOverlap(p2);
+			axis.distance = p1.getDistance(p2);
 
 			if (!p1.doesOverlap(p2))
 			{
@@ -273,15 +284,13 @@ export default class Sat
 		}
 
 		mtv = {...mtv, normal: mtv.normal.clone()};
-		mtv.overlap = Math.abs(mtv.overlap);
+		mtv.distance = Math.abs(mtv.distance);
 		if(mtv.poly != b)
 		{
 			mtv.normal = mtv.normal.neg();
 		}
 
-		const {contacts, refFace, incFace} = findCollisionPoints(a, b, mtv);
-
-		return {axes, collide, a, b, mtv, contacts, refFace, incFace};
+		return {axes, collide, a, b, mtv, ...findCollisionPoints(a, b, mtv)};
 	}
 
 	static testSweep(a, b, velA)
@@ -299,7 +308,9 @@ export default class Sat
 		
 		let collide = true;
 
-		let maxTime = null;
+		let maxEntry = null;
+		let maxAxis = null;
+		let flip = false;
 
 		for(const axis of axes)
 		{
@@ -309,24 +320,27 @@ export default class Sat
 			axis.p1 = p1;
 			axis.p2 = p2;
 			axis.overlap = p1.getOverlap(p2);
+			axis.distance = p1.getDistance(p2);
 
 			if (p1.doesOverlap(p2))
 			{
-				if(maxTime === null)
+				if(maxEntry === null)
 				{
-					maxTime = 0;
+					maxEntry = 0;
 				}
 			}
 			else
 			{
 				const velDot = axis.normal.dot(velA);
 				const p3 = new Overlap(Math.min(p1.min, p1.min + velDot), Math.max(p1.max, p1.max + velDot));
-				if(p3.doesOverlap(p2) && (velDot >= -axis.overlap || velDot <= axis.overlap))
+				if(p3.doesOverlap(p2) && (velDot >= -axis.distance || velDot <= axis.distance))
 				{
-					const time = Math.abs(-axis.overlap / velDot);
-					if(maxTime === null || time > maxTime)
+					const time = Math.abs(-axis.distance / velDot);
+					if(maxEntry === null || time > maxEntry)
 					{
-						maxTime = time;
+						maxEntry = time;
+						maxAxis = axis;
+						flip = velDot <= axis.distance;
 					}
 				}
 				else 
@@ -336,12 +350,157 @@ export default class Sat
 			}
 		}
 
-		if(maxTime === null || !collide)
+		if(maxEntry === null || !collide)
 		{
-			maxTime = 1;
+			maxEntry = 1;
 		}
-		maxTime = Math.max(Math.min(maxTime, 1), 0);
+		maxEntry = Math.max(Math.min(maxEntry, 1), 0);
 
-		return {axes, collide, a, b, maxTime, ...findCollisionPoints(a, b, velocityAxis, false)};
+		const result = {axes, collide, a, b, time: maxEntry};
+
+		if(collide && maxEntry > 0)
+		{
+			const mtv = {...maxAxis};
+			if(flip)
+			{
+				mtv.normal = mtv.normal.neg();
+			}
+
+			const movedPoly = a.clone();
+			movedPoly.setPos(movedPoly.getPos().add(velA.mul(maxEntry * 1.001)));
+			Object.assign(result, findCollisionPoints(movedPoly, b, mtv));
+		}
+
+		return result;
+	}
+
+	static testDoubleSweep(a, b, velA, velB)
+	{
+		const axes = [...getAxes(a), ...getAxes(b)];
+		
+		let relativeVel = null;
+		if((velA && velA.length() > 0) || (velB && velB.length() > 0))
+		{
+			if(!velA)
+			{
+				valA = new Vec();
+			}
+
+			if(!velB)
+			{
+				velB = new Vec();
+			}
+
+			relativeVel = velA.sub(velB);
+
+			const velocityAxis = {
+				a: a.getPos().add(velA), b: b.getPos().add(velA),
+				normal: relativeVel.perp().normalize(),
+				color: a.getColor(),
+				poly: a
+			};
+
+			axes.push(velocityAxis);
+		}
+		
+		let collide = true;
+
+		let maxEntry = null;
+		let minExit = null;
+		let entryAxis = null;
+		let flip = false;
+
+		for(const axis of axes)
+		{
+			const p1 = project(axis.normal, a);
+			const p2 = project(axis.normal, b);
+
+			axis.p1 = p1;
+			axis.p2 = p2;
+
+			const velDot = relativeVel ? axis.normal.dot(relativeVel) : 0;
+
+			let entry = 0;
+			let exit = 0;
+
+			if(p1.doesOverlap(p2))
+			{
+				entry = 0; 
+			}
+			else if(p1.max < p2.min)
+			{
+				entry = (p1.max - p2.min) / -velDot;
+			}
+			else
+			{
+				entry = (p2.max - p1.min) / velDot;
+			}
+
+			if(p1.doesOverlap(new Overlap(p2.min - velDot, p2.max, p2.max - velDot)))
+			{
+				exit = 1;
+			}
+			else if(p2.max + velDot > p2.max)
+			{
+				exit = (p1.min - p2.max) / -velDot;
+			}
+			else
+			{
+				exit = (p2.min - p1.max) / velDot;
+			}
+
+			if(entry < 1 && exit >= 0 && entry < exit)
+			{
+				if(maxEntry === null || entry > maxEntry)
+				{
+					maxEntry = entry;
+					entryAxis = axis;
+					flip = velDot <= 0;
+				}
+
+				if((minExit === null || exit < minExit))
+				{
+					minExit = exit;
+				}
+			}
+			else 
+			{
+				collide = false;
+			}
+		}
+
+		if(minExit !== null && (minExit < maxEntry))
+		{
+			collide = false;
+		}
+
+		if(!collide)
+		{
+			maxEntry = 1;
+		}
+
+		const result = {axes, collide, a, b, time: maxEntry};
+
+		if(collide)
+		{
+			const mtv = {...entryAxis};
+			if(flip)
+			{
+				mtv.normal = mtv.normal.neg();
+			}
+
+			const cloneA = a.clone();
+			const cloneB = b.clone();
+
+			if(relativeVel)
+			{
+				cloneA.setPos(cloneA.getPos().add(velA.mul(maxEntry * 1.001)));
+				cloneB.setPos(cloneB.getPos().add(velB.mul(maxEntry * 1.001)));
+			}
+
+			Object.assign(result, findCollisionPoints(cloneA, cloneB, mtv));
+		}
+
+		return result;
 	}
 }

@@ -64,7 +64,7 @@ function PolygonVelView({polygon, i})
 	        p1={start}
 	        p2={end}
 		/>,
-  		<path type="poly-vel" p={i} d='M-2,0 L2,4 L2,-4 Z' fill="black" transform={`translate(${end.x} ${end.y}) scale(1 1) rotate(${polygon.getVel().toAngle() + 180} 0 0)`}/>
+  		<path type="poly-vel" p={i} d='M-2,0 L2,4 L2,-4 Z' fill="black" transform={`translate(${end.x} ${end.y}) scale(1.5 1.5) rotate(${polygon.getVel().neg().toAngle()} 0 0)`}/>
   ];
 }
 
@@ -191,8 +191,10 @@ const PatternEditor = (props) => {
 	const viewBoxSize = size.div(view.zoom);
 	const viewBoxStr = `${view.center.x - viewBoxSize.x / 2} ${view.center.y - viewBoxSize.y / 2} ${viewBoxSize.x} ${viewBoxSize.y}`;
 
-	const velA = getOption('collisionType') != 'mtv' ? polygons[0].getVel() : null;
-	const velB = getOption('collisionType') == 'doubleSweep' ? polygons[1].getVel() : null;
+	const collisionType = getOption('collisionType');
+
+	const velA = collisionType != 'mtv' ? polygons[0].getVel() : null;
+	const velB = collisionType == 'doubleSweep' ? polygons[1].getVel() : null;
 
 	const tests = {
 		mtv: Sat.test,
@@ -200,7 +202,7 @@ const PatternEditor = (props) => {
 		doubleSweep: Sat.testDoubleSweep,
 	}
 
-	const collides = tests[getOption('collisionType')](polygons[0], polygons[1], velA, velB);
+	const collides = tests[collisionType](polygons[0], polygons[1], velA, velB);
 
 	return (
 		<svg ref={svgRef} 
@@ -233,10 +235,19 @@ const PatternEditor = (props) => {
 			}
 
 			{
-				collides.maxTime && (() =>
+				collides.time && velA && (() =>
 				{
 					const poly = polygons[0].clone();
-					poly.setPos(poly.getPos().add(poly.getVel().mul(collides.maxTime)));
+					poly.setPos(poly.getPos().add(poly.getVel().mul(collides.time)));
+					return <PolygonView polygon={poly}/>;
+				})()
+			}
+
+			{
+				collides.time && velB && (() =>
+				{
+					const poly = polygons[1].clone();
+					poly.setPos(poly.getPos().add(poly.getVel().mul(collides.time)));
 					return <PolygonView polygon={poly}/>;
 				})()
 			}
@@ -284,6 +295,11 @@ const PatternEditor = (props) => {
 
 						collides.axes.map((axis, i) =>
 						{
+							if(axis != collides.maxAxis)
+							{
+								return;
+							}
+
 							const center = axis.a.add(axis.b).div(2);
 							const perp = axis.normal.perp();
 							const projA = project(perp, collides.a);
