@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import useAny from './useAny';
 
 function getSavedOptions()
 {
@@ -22,28 +22,17 @@ function saveOptions(options)
 	localStorage.setItem('options', JSON.stringify(options));
 }
 
+function initOptions(defaults)
+{
+	const savedOptions = getSavedOptions();
+	return Object.assign({}, defaults, saveOptions);
+}
+
 export default function useOptions(defaults = {})
 {
-	const [options, setOptions] = useState(getSavedOptions());
-	saveOptions(options);
+	const options = useAny(() => getSavedOptions(defaults), () => saveOptions(options));
 
-	const setOption = (optionId, value) =>
-	{
-		setOptions({...options, [optionId]: value});
-	};
+	const resetOptions = () => Object.assign(options, defaults);
 
-	const getOption = (optionId) =>
-	{
-		const option = options[optionId];
-		if(option === null || option === undefined)
-		{
-			return defaults[optionId];
-		}
-
-		return option;
-	};
-
-	const resetOptions = () => setOptions({});
-
-	return {setOption, getOption, resetOptions};
+	return {options, resetOptions};
 };

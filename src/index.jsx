@@ -74,7 +74,7 @@ function LineView(props)
 }
 
 const PatternEditor = (props) => {
-	const {getOption, polygons} = props; 
+	const {options, polygons} = props; 
 
 	const [view, setView] = useState({zoom: 2, center: new Vec(50, 50)});
 	const [size, setSize] = useState(new Vec(1200, 800));
@@ -191,7 +191,7 @@ const PatternEditor = (props) => {
 	const viewBoxSize = size.div(view.zoom);
 	const viewBoxStr = `${view.center.x - viewBoxSize.x / 2} ${view.center.y - viewBoxSize.y / 2} ${viewBoxSize.x} ${viewBoxSize.y}`;
 
-	const collisionType = getOption('collisionType');
+	const collisionType = options.collisionType;
 
 	const velA = collisionType != 'mtv' ? polygons[0].getVel() : null;
 	const velB = collisionType == 'doubleSweep' ? polygons[1].getVel() : null;
@@ -289,7 +289,7 @@ const PatternEditor = (props) => {
 			{
 				<g>
 				{
-					getOption('showAxes') && (() =>
+					options.showAxes && (() =>
 					{
 						const results = [];
 
@@ -410,11 +410,11 @@ const collisionTypes = {
 
 const Header = (props) =>
 {	
-	const {getOption, setOption, reset} = props;
+	const {options, reset} = props;
 
 	return (
 		<div className="header">
-			<select value={getOption('collisionType')} onChange={(e)=>setOption('collisionType', e.target.value)}>
+			<select value={options.collisionType} onChange={(e) => options.collisionType = e.target.value}>
 			{
 				Object.keys(collisionTypes).map(k =>
 				{
@@ -423,7 +423,7 @@ const Header = (props) =>
 			}
 			</select>
 
-			<input type="checkbox" checked={getOption('showAxes')} onChange={()=>setOption('showAxes', !getOption('showAxes'))} />
+			<input type="checkbox" checked={options.showAxes} onChange={() => options.showAxes = !options.showAxes} />
 
 			<input type="button" value="Reset" onClick={reset}/>
 		</div>
@@ -437,7 +437,7 @@ const defaultOptions = {
 
 const App = () =>
 {
-	const {setOption, getOption, resetOptions} = useOptions(defaultOptions);
+	const {options, resetOptions} = useOptions(defaultOptions);
 
 	const polygons = usePolygons(createPolygons);
 	savePolygons(polygons);
@@ -450,8 +450,8 @@ const App = () =>
 
 	return (
 		<div className="container">
-			<Header getOption={getOption} setOption={setOption} reset={reset} />
-			<PatternEditor polygons={polygons} getOption={getOption}/>
+			<Header options={options} reset={reset} />
+			<PatternEditor polygons={polygons} options={options}/>
 		</div>
 	);
 }
