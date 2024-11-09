@@ -266,7 +266,6 @@ export default class Sat
 			axis.p1 = p1;
 			axis.p2 = p2;
 			axis.overlap = p1.getOverlap(p2);
-			axis.distance = p1.getDistance(p2);
 
 			if (!p1.doesOverlap(p2))
 			{
@@ -283,14 +282,13 @@ export default class Sat
 			return {axes, collide, a, b, mtv};
 		}
 
-		mtv = {...mtv, normal: mtv.normal.clone()};
-		mtv.distance = Math.abs(mtv.distance);
-		if(mtv.poly != b)
+		const collisionPointsAxis = {...mtv, normal: mtv.normal.clone()};
+		if(collisionPointsAxis.poly != b)
 		{
-			mtv.normal = mtv.normal.neg();
+			collisionPointsAxis.normal = collisionPointsAxis.normal.neg();
 		}
 
-		return {axes, collide, a, b, mtv, ...findCollisionPoints(a, b, mtv)};
+		return {axes, collide, a, b, mtv, ...findCollisionPoints(a, b, collisionPointsAxis)};
 	}
 
 	static testSweep(a, b, velA)

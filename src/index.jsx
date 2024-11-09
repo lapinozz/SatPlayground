@@ -295,11 +295,6 @@ const PatternEditor = (props) => {
 
 						collides.axes.map((axis, i) =>
 						{
-							if(axis != collides.maxAxis)
-							{
-								return;
-							}
-
 							const center = axis.a.add(axis.b).div(2);
 							const perp = axis.normal.perp();
 							const projA = project(perp, collides.a);
