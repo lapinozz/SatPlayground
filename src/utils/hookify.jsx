@@ -93,7 +93,6 @@ export default function hookify(Class, mutableTable = {})
 			},
 			set: function(target, property, value, receiver)
 			{
-				console.log('set', target, property, value)
 				if(property != 'length')
 				{
 					value = hookifyFunc(value, instance.onMutation);
