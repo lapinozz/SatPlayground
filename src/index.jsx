@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import '../styles/index.scss';
 
 import Vec from './utils/vec';
+import useAny from './utils/useAny';
 import hookify from './utils/hookify';
 import useOptions from './utils/options';
 import useDragger from './utils/dragger';
@@ -74,10 +75,7 @@ function LineView(props)
 }
 
 const PatternEditor = (props) => {
-	const {options, polygons} = props; 
-
-	const [view, setView] = useState({zoom: 2, center: new Vec(50, 50)});
-	const [size, setSize] = useState(new Vec(1200, 800));
+	const {options, polygons, view} = props; 
 
 	const [hover, setHover] = useState(null);
 
@@ -106,10 +104,8 @@ const PatternEditor = (props) => {
 
 		center = mousePos.sub(mousePos.sub(center).div(ratio));
 
-		setView({
-			zoom: newZoom,
-			center: center
-		});
+		view.zoom = newZoom;
+		view.center = center;
 	};
 
 	const onDragEnd = (e) => {
@@ -137,11 +133,7 @@ const PatternEditor = (props) => {
 		}
 		else
 		{
-			const center = view.center.sub(delta.div(view.zoom));
-			setView({
-				...view,
-				center
-			});
+			view.center = view.center.sub(delta.div(view.zoom));
 		}
 	};
 
@@ -188,7 +180,15 @@ const PatternEditor = (props) => {
 		mousemove: onMouseMove,
 	});
 
-	const viewBoxSize = size.div(view.zoom);
+	const svgSize = useAny({height: 1, width: 1});
+	const ref = useRef(null)
+
+	useEffect(() => {
+		svgSize.height = svgRef.current.clientHeight;
+		svgSize.width = svgRef.current.clientWidth;
+	})
+
+	const viewBoxSize = new Vec(svgSize.width, svgSize.height).div(view.zoom);
 	const viewBoxStr = `${view.center.x - viewBoxSize.x / 2} ${view.center.y - viewBoxSize.y / 2} ${viewBoxSize.x} ${viewBoxSize.y}`;
 
 	const collisionType = options.collisionType;
@@ -210,8 +210,7 @@ const PatternEditor = (props) => {
 			onMouseDown={handleMouseDown} 
 			onWheelCapture={handleScroll} 
 			viewBox={viewBoxStr} 
-			height={size.y} 
-			width={size.x} >
+				 >
 		      <defs>
 		        <marker 
 		          id='arrowHead' 
@@ -412,21 +411,59 @@ const Header = (props) =>
 {	
 	const {options, reset} = props;
 
+	const optionDefs = [
+		{
+			id: 'collisionType',
+			name: "Collision Test: ",
+			type: 'select',
+			list: collisionTypes
+		},
+		{
+			id: 'showAxes',
+			name: "Show Axes: ",
+			type: 'checkbox',
+		},
+		{
+			id: 'reset',
+			name: "Reset",
+			type: 'button',
+			onClick: reset
+		}
+	];
+
 	return (
-		<div className="header">
-			<select value={options.collisionType} onChange={(e) => options.collisionType = e.target.value}>
+		<nav className="header navbar navbar-expand-lg  bg-primary">
+		{
+			optionDefs.map((def) =>
 			{
-				Object.keys(collisionTypes).map(k =>
+				if(def.type == 'button')
 				{
-					return <option value={k}>{collisionTypes[k]}</option>
-				})
-			}
-			</select>
-
-			<input type="checkbox" checked={options.showAxes} onChange={() => options.showAxes = !options.showAxes} />
-
-			<input type="button" value="Reset" onClick={reset}/>
-		</div>
+					return <input className="option" type="button" value={def.name} onClick={def.onClick}/>
+				}
+				else if(def.type == 'select')
+				{
+					return <div className="option">
+						<div className="label">{def.name}</div>
+						<select value={options.collisionType} onChange={(e) => options.collisionType = e.target.value}>
+						{
+							Object.keys(collisionTypes).map(k =>
+							{
+								return <option value={k}>{collisionTypes[k]}</option>
+							})
+						}
+						</select>
+					</div>
+				}
+				else if(def.type == 'checkbox')
+				{
+					return <div className="option">
+						<div className="label">{def.name}</div>
+						<input type="checkbox" checked={options.showAxes} onChange={() => options.showAxes = !options.showAxes} />
+					</div>
+				}
+			})
+		}
+		</nav>
 	);
 }
 
@@ -435,6 +472,8 @@ const defaultOptions = {
 	showAxes: true
 };
 
+const defaultView = {zoom: 2, center: new Vec(50, 50)};
+
 const App = () =>
 {
 	const {options, resetOptions} = useOptions(defaultOptions);
@@ -442,16 +481,19 @@ const App = () =>
 	const polygons = usePolygons(createPolygons);
 	savePolygons(polygons);
 
+	const view = useAny(defaultView);
+
 	const reset = () =>
 	{
 		resetOptions();
 		polygons.splice(0, polygons.length, ...createPolygons(false));
+		Object.assign(view, defaultView);
 	};
 
 	return (
 		<div className="container">
 			<Header options={options} reset={reset} />
-			<PatternEditor polygons={polygons} options={options}/>
+			<PatternEditor polygons={polygons} options={options} view={view}/>
 		</div>
 	);
 }

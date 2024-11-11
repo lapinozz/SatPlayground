@@ -1,11 +1,108 @@
-body {
-  background-color:#888;
-  color:#fff;
+html, body, .root, .container
+{
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0;
+}
+
+body
+{
+  background-color: #424242;
+  color: #ddd;
+  font-family: Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+input, select, textarea, button
+{
+  font-family: inherit;
+}
+
+input, select
+{
+  border-radius: 5px;
+  border-color: #000;
+  border-width: 1px;
+  padding: 3px;
+}
+
+input
+{
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+input[type="checkbox"]
+{
+  background-color: var(--form-background);
+  /* Not removed via appearance */
+  margin: 0;
+
+  font: inherit;
+  color: currentColor;
+  width: 1.15em;
+  height: 1.15em;
+  border: 0.15em solid currentColor;
+  border-radius: 0.15em;
+  transform: translateY(0.05em);
+
+  display: grid;
+  place-content: center;
+
+  &::before
+  {
+    content: "";
+    width: 0.65em;
+    height: 0.65em;    
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    display: none;
+    box-shadow: inset 1em 1em white;
+    /* Windows High Contrast Mode */
+    background-color: CanvasText;
+  }
+
+  &:checked::before
+  {
+    display: initial;
+  }
+}
+
+.container
+{
+  padding: 0rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.header
+{
+  background: #415162;
+  padding: 1rem;
+  display: flex;
+  gap: 2rem;  
+
+  .option
+  {
+    display: flex;
+    white-space: pre;
+    align-items: center;
+
+    .label
+    {
+      margin-right: 0.25rem;
+    }
+  }
 }
 
 .svg-view
 {
-  background-color: #eee;
+  background-color: #ccc;
 
   polygon
   {
