@@ -58,7 +58,12 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 	{
 		if(dragger.isScaling && e.touches)
 		{
-			onZoom(Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY));
+			const prevLength = dragger.scaleLength;
+			dragger.scaleLength = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+			if(prevLength)
+			{
+				onZoom(prevLength / dragger.scaleLength);
+			}
 		}
 
 		if(dragger.isDragging)
@@ -105,6 +110,7 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 		dragger.delta = new Vec();
 		dragger.globalDelta = new Vec();
 		dragger.target = e.target;
+		dragger.scaleLength = null;
 
 		e.preventDefault();
 	    e.stopPropagation();

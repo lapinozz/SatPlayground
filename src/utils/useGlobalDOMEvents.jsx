@@ -3,7 +3,7 @@ import {useRef, useEffect} from 'react';
 export default function useGlobalDOMEvents(props, options = { capture: false, passive: false }) {
 	const eventsRef = useRef({});
 	const events = eventsRef.current;
-
+	
 	useEffect(() => {
 		for (let [key, func] of Object.entries(props))
 		{
