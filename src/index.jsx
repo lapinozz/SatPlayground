@@ -80,8 +80,6 @@ const PatternEditor = (props) => {
 	const [hover, setHover] = useState(null);
 
 	const svgRef = useRef(null);
-
-	const dragTarget = useRef(null);
  
 	const screenPosToSvgPos = (pos) => {
 		const pt = svgRef.current.createSVGPoint();
@@ -94,10 +92,10 @@ const PatternEditor = (props) => {
 		return screenPosToSvgPos({x: e.clientX, y: e.clientY});
 	}
 
-	const handleScroll = (e) => {
+	const onZoom = (e, delta) => {
 		let {zoom, center} = view;
 
-		const ratio = e.deltaY < 0 ? 1.1 : 0.9;
+		const ratio = delta;
 		const newZoom = zoom * ratio;
 
 		const mousePos = eventToSvgPos(e);
@@ -109,26 +107,25 @@ const PatternEditor = (props) => {
 	};
 
 	const onDragEnd = (e) => {
-		dragTarget.current = null;
 	};
 
-	const onDrag = (e, {delta}) => {
-		if(dragTarget.current.getAttribute('type') == 'poly-point')
+	const onDrag = (e, {delta, target}) => {
+		if(target.getAttribute('type') == 'poly-point')
 		{
-			const polygon = polygons[dragTarget.current.getAttribute('p')];
+			const polygon = polygons[target.getAttribute('p')];
 			const pts = polygon.getPoints();
-			const pt = pts[dragTarget.current.getAttribute('i')];
-			pts[dragTarget.current.getAttribute('i')] = pt.add(delta.div(view.zoom));
+			const pt = pts[target.getAttribute('i')];
+			pts[target.getAttribute('i')] = pt.add(delta.div(view.zoom));
 			polygon.setPoints(pts);
 		}
-		else if(dragTarget.current.getAttribute('type') == 'poly-vel')
+		else if(target.getAttribute('type') == 'poly-vel')
 		{
-			const polygon = polygons[dragTarget.current.getAttribute('p')];
+			const polygon = polygons[target.getAttribute('p')];
 			polygon.setVel(polygon.getVel().add(delta.div(view.zoom)));
 		}
-		else if(dragTarget.current.getAttribute('type') == 'poly')
+		else if(target.getAttribute('type') == 'poly')
 		{
-			const polygon = polygons[dragTarget.current.getAttribute('p')];
+			const polygon = polygons[target.getAttribute('p')];
 			polygon.setPos(polygon.getPos().add(delta.div(view.zoom)));
 		}
 		else
@@ -138,7 +135,6 @@ const PatternEditor = (props) => {
 	};
 
 	const onDragStart = (e) => {
-		dragTarget.current = e.target;
 	};
 
 	const onClick = (e, {currentPos}) => {
@@ -174,7 +170,7 @@ const PatternEditor = (props) => {
 		}
 	};
 
-	const {dragger, handleMouseDown} = useDragger({onDragStart, onDrag, onDragEnd, onClick, onDbClick});
+	const {dragger, handleMouseDown} = useDragger({onDragStart, onDrag, onDragEnd, onClick, onDbClick, onZoom});
 
 	useGlobalDOMEvents({
 		mousemove: onMouseMove,
@@ -209,7 +205,6 @@ const PatternEditor = (props) => {
 			className="svg-view"
 			onMouseDown={handleMouseDown}
 			onTouchStart={handleMouseDown}
-			onWheelCapture={handleScroll} 
 			viewBox={viewBoxStr} 
 				 >
 		      <defs>

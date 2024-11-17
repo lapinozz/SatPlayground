@@ -3,7 +3,12 @@ import {useRef} from 'react';
 import Vec from './vec';
 import useGlobalDOMEvents from './useGlobalDOMEvents';
 
-export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onDbClick, onMove} = {})
+function getEventPos(e)
+{
+	return e.touches ? new Vec(e.touches[0].clientX, e.touches[0].clientY) : new Vec(e.clientX, e.clientY); 
+}
+
+export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onDbClick, onZoom} = {})
 {
 	const dragger = useRef({});
 
@@ -28,7 +33,10 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 		}
 	};
 
-	const handleMouseUp = (e) => {
+	const handleMouseUp = (e) =>
+	{
+		dragger.isScaling = false;
+
 		if(!dragger.isDragging)
 		{
 			return;
@@ -46,15 +54,19 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 		}
 	};
 
-	const handleMouseMove = (e) => {
+	const handleMouseMove = (e) =>
+	{
+		if(dragger.isScaling && e.touches)
+		{
+			onZoom(Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY));
+		}
 
-		console.log(e)
 		if(!dragger.isDragging)
 		{
 			return;
 		}
 
-		const currentPos = new Vec(e.clientX, e.clientY);
+		const currentPos = getEventPos(e);
 		const globalDelta = currentPos.sub(dragger.startPos);
 
 		if(!dragger.hasMoved && globalDelta.length() > 2)
@@ -72,24 +84,38 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 
 			onDrag(e, dragger);
 		}
-			//console.log({...dragger})
-			e.preventDefault();
-			       e.stopPropagation();
-			       return false;
+
+		e.preventDefault();
+		e.stopPropagation();
+		return false;
 	};
 
-	const handleMouseDown = (e) => {
-		console.log(e)
-		dragger.isDragging = true;
+	const handleMouseDown = (e) =>
+	{
+	    dragger.isScaling = e.touches && e.touches.length === 2;
+
+	    if(dragger.isScaling && dragger.isDragging)
+	    {
+			onDragEnd(e, dragger);
+	    }
+
+		dragger.isDragging = !dragger.isScaling;
 		dragger.hasMoved = false;
-		dragger.startPos = e.touches ? new Vec(e.touches[0].clientX, e.touches[0].clientY) : new Vec(e.clientX, e.clientY);
+		dragger.startPos = getEventPos(e);
 		dragger.currentPos = dragger.startPos.clone();
 		dragger.lastPos = dragger.currentPos.clone();
 		dragger.delta = new Vec();
 		dragger.globalDelta = new Vec();
-			e.preventDefault();
-			       e.stopPropagation();
-			       return false;
+		dragger.target = e.target;
+
+		e.preventDefault();
+	    e.stopPropagation();
+		return false;
+	};
+
+	const handleScroll = (e) =>
+	{
+		onZoom(e, e.deltaY < 0 ? 1.1 : 0.9);
 	};
 
 	useGlobalDOMEvents({
@@ -97,10 +123,12 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 		touchend: handleMouseUp,
 		mousemove: handleMouseMove,
 		touchmove: handleMouseMove,
+		wheel: handleScroll
 	});
 
 	return {
 		dragger,
 		handleMouseDown,
+
 	}
 };
