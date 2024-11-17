@@ -30,7 +30,7 @@ function initOptions(defaults)
 
 export default function useOptions(defaults = {})
 {
-	const options = useAny(() => getSavedOptions(defaults), () => saveOptions(options));
+	const options = useAny(() => initOptions(defaults), () => saveOptions(options));
 
 	const resetOptions = () => Object.assign(options, defaults);
 

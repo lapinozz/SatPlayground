@@ -20,8 +20,11 @@ export default function useAny(obj, onChange)
 			},
 			set: function(target, property, value, receiver)
 			{
-				target[property] = value;
-				obj.onMutation();
+				if(target[property] != value)
+				{
+					target[property] = value;
+					obj.onMutation();
+				}
 				return true;
 			}
 		});
@@ -35,6 +38,7 @@ export default function useAny(obj, onChange)
 	{
 		obj.onMutation = () =>
 		{
+			console.trace('mut')
 			setInstance({...instance});
 			onChange && onChange();
 		};
