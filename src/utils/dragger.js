@@ -61,28 +61,26 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 			onZoom(Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY));
 		}
 
-		if(!dragger.isDragging)
+		if(dragger.isDragging)
 		{
-			return;
-		}
+			const currentPos = getEventPos(e);
+			const globalDelta = currentPos.sub(dragger.startPos);
 
-		const currentPos = getEventPos(e);
-		const globalDelta = currentPos.sub(dragger.startPos);
+			if(!dragger.hasMoved && globalDelta.length() > 2)
+			{
+				dragger.hasMoved = true;
+				onDragStart(e, dragger);
+			}
 
-		if(!dragger.hasMoved && globalDelta.length() > 2)
-		{
-			dragger.hasMoved = true;
-			onDragStart(e, dragger);
-		}
+			if(dragger.hasMoved)
+			{
+				dragger.lastPos = dragger.currentPos;
+				dragger.currentPos = currentPos;
+				dragger.delta = currentPos.sub(dragger.lastPos);
+				dragger.globalDelta = globalDelta;
 
-		if(dragger.hasMoved)
-		{
-			dragger.lastPos = dragger.currentPos;
-			dragger.currentPos = currentPos;
-			dragger.delta = currentPos.sub(dragger.lastPos);
-			dragger.globalDelta = globalDelta;
-
-			onDrag(e, dragger);
+				onDrag(e, dragger);
+			}
 		}
 
 		e.preventDefault();

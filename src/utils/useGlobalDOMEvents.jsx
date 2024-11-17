@@ -1,6 +1,6 @@
 import {useRef, useEffect} from 'react';
 
-export default function useGlobalDOMEvents(props) {
+export default function useGlobalDOMEvents(props, options = { capture: false, passive: false }) {
 	const eventsRef = useRef({});
 	const events = eventsRef.current;
 
@@ -15,12 +15,12 @@ export default function useGlobalDOMEvents(props) {
 				}
 			};
 
-			window.addEventListener(key, events[key].domCallback, false);
+			window.addEventListener(key, events[key].domCallback, options);
 		}
 
 		return () => {
 			for (let [key, event] of Object.entries(events)) {
-				window.removeEventListener(key, event.domCallback, false);
+				window.removeEventListener(key, event.domCallback, options);
 			}
 		};
 	}, []);
