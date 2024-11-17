@@ -63,7 +63,7 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 
 			if(prevLength)
 			{
-				onZoom(e, prevLength / dragger.scaleLength, dragger);
+				onZoom(e, dragger.scaleLength / prevLength, dragger);
 			}
 		}
 
