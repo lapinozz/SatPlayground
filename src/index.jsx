@@ -16,14 +16,14 @@ import Sat, {project} from './sat';
 
 const [usePolygon, usePolygons] = hookify(Polygon);
 
-function PolygonView({polygon, i, opacity})
+function PolygonView({polygon, i, ghost, collide})
 {
 	const p = polygon;
-	return  <g style={{opacity:opacity || 1}}>
+	return  <g className={`${ghost ? 'ghost' : ''} ${collide ? 'collide' : ''}`}>
 		<polygon type="poly" p={i}
 			points={p.getAbsolutePoints().map(point=>point.x+','+point.y).join(' ')}
 			style={{fill: p.isConvex() ? 'red' : p.getColor(), strokeWidth:'0'}}>
-			</polygon>;
+			</polygon>
 
 		<g>
 		{
@@ -207,7 +207,8 @@ const PatternEditor = (props) => {
 	return (
 		<svg ref={svgRef} 
 			className="svg-view"
-			onMouseDown={handleMouseDown} 
+			onMouseDown={handleMouseDown}
+			onTouchStart={handleMouseDown}
 			onWheelCapture={handleScroll} 
 			viewBox={viewBoxStr} 
 				 >
@@ -224,12 +225,19 @@ const PatternEditor = (props) => {
 		      </defs>
 
 			{
-				collides.collide && collides.mtv && (() =>
+				polygons.map((p, i) =>
+				{
+					return <PolygonView key={i} polygon={p} i={i} collide={collides.collide}/>;
+				})
+			}
+
+			{
+				collides.collide && collides.mtv &&(() =>
 				{
 					const mtv = collides.mtv;
 					const poly = polygons[1].clone();
 					poly.setPos(poly.getPos().add(mtv.normal.mul(mtv.overlap)));
-					return <PolygonView polygon={poly}/>;
+					return <PolygonView polygon={poly} ghost={true}/>;
 				})()
 			}
 
@@ -238,7 +246,7 @@ const PatternEditor = (props) => {
 				{
 					const poly = polygons[0].clone();
 					poly.setPos(poly.getPos().add(poly.getVel().mul(collides.time)));
-					return <PolygonView polygon={poly}/>;
+					return <PolygonView polygon={poly} ghost={true}/>;
 				})()
 			}
 
@@ -247,15 +255,8 @@ const PatternEditor = (props) => {
 				{
 					const poly = polygons[1].clone();
 					poly.setPos(poly.getPos().add(poly.getVel().mul(collides.time)));
-					return <PolygonView polygon={poly}/>;
+					return <PolygonView polygon={poly} ghost={true}/>;
 				})()
-			}
-
-			{
-				polygons.map((p, i) =>
-				{
-					return <PolygonView key={i} polygon={p} i={i} opacity={collides.collide ? 0.5 : 1}/>;
-				})
 			}
 
 			{
@@ -267,20 +268,20 @@ const PatternEditor = (props) => {
 			}
 
 			{
-				collides.contacts && collides.contacts.map((c) =>
+				options.showCollisionPoints && collides.contacts && collides.contacts.map((c) =>
 				{
 					return <circle cx={c.x} cy={c.y} r="3" stroke="red" strokeWidth="0.75" fill="gray" />;
 				})
 			}
 
 			{
-				collides.refFace && 
+				options.showCollisionFaces && collides.refFace && 
 								<line type="axis" x1={collides.refFace.a.x} y1={collides.refFace.a.y} x2={collides.refFace.b.x} y2={collides.refFace.b.y} 
 										style={{stroke:"orange",strokeWidth: 2}} />
 			}
 
 			{
-				collides.incFace && 
+				options.showCollisionFaces && collides.incFace && 
 								<line type="axis" x1={collides.incFace.a.x} y1={collides.incFace.a.y} x2={collides.incFace.b.x} y2={collides.incFace.b.y} 
 										style={{stroke:"purple",strokeWidth: 2}} />
 			}
@@ -299,26 +300,45 @@ const PatternEditor = (props) => {
 							const projA = project(perp, collides.a);
 							const projB = project(perp, collides.b);
 							const projMin = Math.min(projA.min, projB.min);
-							const origin = perp.mul(projMin - 30);
-							const axisOffset = axis.normal.perp().mul(axis.normal.perp().dot(origin));
 
-							const a = origin.add(axis.normal.mul(-1000));
-							const b = origin.add(axis.normal.mul(1000));
-							const doesOverlap = axis.overlap > 0;
+							const origin = perp.mul(projMin - 30);
+							const secondaryOrigin = perp.mul(projMin - 50);
+							const axisOffset = axis.normal.perp().mul(axis.normal.perp().dot(origin));
+							const secondaryAxisOffset = axis.normal.perp().mul(axis.normal.perp().dot(secondaryOrigin));
+
+							const p1 = origin.add(axis.normal.mul(-1000));
+							const p2 = origin.add(axis.normal.mul(1000));
+
+							const secondaryP1 = secondaryOrigin.add(axis.normal.mul(-1000));
+							const secondaryP2 = secondaryOrigin.add(axis.normal.mul(1000));
+
+							const showOverlap = collisionType == 'mtv' && axis.overlap != 0;
 
 							const isHovered = hover && hover.getAttribute('type') == 'axis' && hover.getAttribute('i') == i;
 
+							const axisColor = options.showMtv && collides.mtv == axis ? "red" : "black";
+
 							results.push(
-								<line type="axis" i={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} 
-										style={{stroke:collides.mtv==axis?"red":"black",strokeWidth:doesOverlap ? 2 : 1}} />
+								<LineView type="axis" i={i} p1={p1} p2={p2} 
+										style={{stroke: axisColor, strokeWidth:showOverlap ? 2 : 1}} />
 							);
 
 							if(isHovered)
 							{
+								if(velA || velB)
+								{
+									results.push(
+										<LineView p1={secondaryP1} p2={secondaryP2} 
+												style={{stroke:collides.mtv==axis?"red":"black", strokeWidth:showOverlap ? 2 : 1}} />
+									);
+								}
+
 								results.push(
 									<line x1={axis.a.x} y1={axis.a.y} x2={axis.b.x} y2={axis.b.y} 
 											style={{stroke:"black",strokeWidth:5}} />
 								);
+
+								const time = collides.time || 0;	
 
 								for(const pt of [collides.a, collides.b].map(poly => poly.getAbsolutePoints().map(p => ({...p, color:poly.getColor()}))).flat())
 								{
@@ -330,6 +350,9 @@ const PatternEditor = (props) => {
 									);
 								}
 
+								const velADot = axis.normal.dot(velA || 0);
+								const velBDot = axis.normal.dot(velB || 0);
+
 								results.push(
 									<LineView p1={axis.normal.mul(axis.p1.min).add(axisOffset)} p2={axis.normal.mul(axis.p1.max).add(axisOffset)} 
 									style={{stroke:collides.a.getColor(), strokeWidth: 6}} strokeLinecap="round" strokeOpacity={0.55}/>
@@ -339,6 +362,27 @@ const PatternEditor = (props) => {
 									<LineView p1={axis.normal.mul(axis.p2.min).add(axisOffset)} p2={axis.normal.mul(axis.p2.max).add(axisOffset)} 
 									style={{stroke:collides.b.getColor(), strokeWidth: 6}} strokeLinecap="round" strokeOpacity={0.55}/>
 								);
+
+								const showSecondary = (overlap, vel, poly) => 
+								{
+									results.push(
+										<LineView p1={axis.normal.mul(overlap.min + vel).add(secondaryAxisOffset)} p2={axis.normal.mul(overlap.max + vel).add(secondaryAxisOffset)} 
+										style={{stroke:poly.getColor(), strokeWidth: 6}} strokeLinecap="round" strokeOpacity={0.55}/>
+									);
+
+									const pts = [axis.normal.mul(overlap.min).add(axisOffset), axis.normal.mul(overlap.max).add(axisOffset), axis.normal.mul(overlap.max + vel).add(secondaryAxisOffset), axis.normal.mul(overlap.min + vel).add(secondaryAxisOffset)];
+
+									results.push(
+										<polygon points={pts.map(point=>point.x+','+point.y).join(' ')}
+										style={{fill:poly.getColor()}} fillOpacity={0.55}/>
+									);
+								}
+
+								if(velA || velB)
+								{
+									showSecondary(axis.p1, velADot, collides.a);
+									showSecondary(axis.p2, velBDot, collides.b);
+								}
 							}
 						})
 
@@ -424,6 +468,21 @@ const Header = (props) =>
 			type: 'checkbox',
 		},
 		{
+			id: 'showMtv',
+			name: "Show MTV axis: ",
+			type: 'checkbox',
+		},
+		{
+			id: 'showCollisionPoints',
+			name: "Show Collision Points: ",
+			type: 'checkbox',
+		},
+		{
+			id: 'showCollisionFaces',
+			name: "Show Collision Faces: ",
+			type: 'checkbox',
+		},
+		{
 			id: 'reset',
 			name: "Reset",
 			type: 'button',
@@ -457,9 +516,9 @@ const Header = (props) =>
 				}
 				else if(def.type == 'checkbox')
 				{
-					return <div className="option">
+					return <div className="option" onClick={() => options[def.id] = !options[def.id]}>
 						<div className="label">{def.name}</div>
-						<input type="checkbox" checked={options.showAxes} onChange={() => options.showAxes = !options.showAxes} />
+						<input type="checkbox" checked={options[def.id]} />
 					</div>
 				}
 			})
@@ -471,7 +530,10 @@ const Header = (props) =>
 
 const defaultOptions = {
 	collisionType: 'mtv', 
-	showAxes: true
+	showAxes: true,
+	showMtv: true,
+	showCollisionPoints: true,
+	showCollisionFaces: true
 };
 
 const defaultView = {zoom: 2, center: new Vec(50, 50)};

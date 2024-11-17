@@ -38,7 +38,6 @@ export default function useAny(obj, onChange)
 	{
 		obj.onMutation = () =>
 		{
-			console.trace('mut')
 			setInstance({...instance});
 			onChange && onChange();
 		};

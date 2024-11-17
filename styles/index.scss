@@ -14,6 +14,7 @@ body
   background-color: #424242;
   color: #ddd;
   font-family: Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  user-select: none;
 }
 
 input, select, textarea, button
@@ -85,7 +86,9 @@ input[type="checkbox"]
   background: #415162;
   padding: 1rem;
   display: flex;
-  gap: 2rem;  
+  flex-wrap: wrap;
+  column-gap: 2rem;    
+  row-gap: 23px;
 
   .option
   {
@@ -113,7 +116,19 @@ input[type="checkbox"]
 .svg-view
 {
   background-color: #ccc;
-  flex-grow: 1;
+  flex-grow: 1;  
+  touch-action: manipulation;
+
+  .ghost
+  {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  .collide
+  {
+    opacity: 0.8;
+  }
 
   polygon
   {

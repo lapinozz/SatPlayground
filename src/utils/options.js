@@ -7,7 +7,7 @@ function getSavedOptions()
 		const item = localStorage.getItem('options');
 		if(item)
 		{
-			return JSON.parse(item);
+			return {...JSON.parse(item)};
 		}
 	}
 	catch(e)
@@ -24,8 +24,7 @@ function saveOptions(options)
 
 function initOptions(defaults)
 {
-	const savedOptions = getSavedOptions();
-	return Object.assign({}, defaults, saveOptions);
+	return Object.assign({}, defaults, getSavedOptions());
 }
 
 export default function useOptions(defaults = {})
