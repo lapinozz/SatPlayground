@@ -92,15 +92,14 @@ const PatternEditor = (props) => {
 		return screenPosToSvgPos({x: e.clientX, y: e.clientY});
 	}
 
-	const onZoom = (e, delta) => {
+	const onZoom = (e, delta, {currentPos}) => {
 		let {zoom, center} = view;
 
-		const ratio = delta;
-		const newZoom = zoom * ratio;
+		const newZoom = zoom * delta;
 
-		const mousePos = eventToSvgPos(e);
+		const mousePos = screenPosToSvgPos(currentPos);
 
-		center = mousePos.sub(mousePos.sub(center).div(ratio));
+		center = mousePos.sub(mousePos.sub(center).div(delta));
 
 		view.zoom = newZoom;
 		view.center = center;

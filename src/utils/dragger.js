@@ -59,11 +59,11 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 		if(dragger.isScaling && e.touches && e.touches.length === 2)
 		{
 			const prevLength = dragger.scaleLength;
-			dragger.scaleLength = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+			dragger.scaleLength = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
 
 			if(prevLength)
 			{
-				//onZoom(prevLength / dragger.scaleLength);
+				onZoom(e, prevLength / dragger.scaleLength, dragger);
 			}
 		}
 
@@ -120,7 +120,7 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 
 	const handleScroll = (e) =>
 	{
-		onZoom(e, e.deltaY < 0 ? 1.1 : 0.9);
+		onZoom(e, e.deltaY < 0 ? 1.1 : 0.9, dragger);
 	};
 
 	useGlobalDOMEvents({
