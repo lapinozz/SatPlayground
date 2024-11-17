@@ -428,11 +428,12 @@ const Header = (props) =>
 			name: "Reset",
 			type: 'button',
 			onClick: reset
-		}
+		},
+
 	];
 
 	return (
-		<nav className="header navbar navbar-expand-lg  bg-primary">
+		<nav className="header">
 		{
 			optionDefs.map((def) =>
 			{
@@ -463,6 +464,7 @@ const Header = (props) =>
 				}
 			})
 		}
+			<a className="repo" id="myLink" href="https://github.com/lapinozz/SatPlayground" target="_blank"><button>Code/Instructions <i className="fa fa-github"></i></button></a>
 		</nav>
 	);
 }

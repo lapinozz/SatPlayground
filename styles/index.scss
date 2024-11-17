@@ -98,11 +98,22 @@ input[type="checkbox"]
       margin-right: 0.25rem;
     }
   }
+
+  .repo
+  {
+    margin-left: auto;
+    
+    i
+    {
+      font-size: 18px;
+    }
+  }
 }
 
 .svg-view
 {
   background-color: #ccc;
+  flex-grow: 1;
 
   polygon
   {
