@@ -56,10 +56,11 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 
 	const handleMouseMove = (e) =>
 	{
-		if(dragger.isScaling && e.touches)
+		if(dragger.isScaling && e.touches && e.touches.length === 2)
 		{
 			const prevLength = dragger.scaleLength;
 			dragger.scaleLength = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+			
 			if(prevLength)
 			{
 				onZoom(prevLength / dragger.scaleLength);
