@@ -47,6 +47,8 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 	};
 
 	const handleMouseMove = (e) => {
+
+		console.log(e)
 		if(!dragger.isDragging)
 		{
 			return;
@@ -70,21 +72,31 @@ export default function useDragger({onDragStart, onDrag, onDragEnd, onClick, onD
 
 			onDrag(e, dragger);
 		}
+			//console.log({...dragger})
+			e.preventDefault();
+			       e.stopPropagation();
+			       return false;
 	};
 
 	const handleMouseDown = (e) => {
+		console.log(e)
 		dragger.isDragging = true;
 		dragger.hasMoved = false;
-		dragger.startPos = new Vec(e.clientX, e.clientY);
+		dragger.startPos = e.touches ? new Vec(e.touches[0].clientX, e.touches[0].clientY) : new Vec(e.clientX, e.clientY);
 		dragger.currentPos = dragger.startPos.clone();
 		dragger.lastPos = dragger.currentPos.clone();
 		dragger.delta = new Vec();
 		dragger.globalDelta = new Vec();
+			e.preventDefault();
+			       e.stopPropagation();
+			       return false;
 	};
 
 	useGlobalDOMEvents({
 		mouseup: handleMouseUp,
+		touchend: handleMouseUp,
 		mousemove: handleMouseMove,
+		touchmove: handleMouseMove,
 	});
 
 	return {
