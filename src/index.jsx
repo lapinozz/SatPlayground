@@ -84,7 +84,7 @@ function getTargetType(target)
 	return getTargetAttribute(target, 'type');
 }
 
-const PatternEditor = (props) => {
+const SatPlayground = (props) => {
 	const {options, polygons, view} = props; 
 
 	const [hover, setHover] = useState(null);
@@ -560,7 +560,7 @@ const App = () =>
 	return (
 		<div className="container">
 			<Header options={options} reset={reset} />
-			<PatternEditor polygons={polygons} options={options} view={view}/>
+			<SatPlayground polygons={polygons} options={options} view={view}/>
 		</div>
 	);
 }
