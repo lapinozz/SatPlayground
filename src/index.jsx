@@ -74,6 +74,16 @@ function LineView(props)
 	return <line {...props} x1={props.p1.x} y1={props.p1.y} x2={props.p2.x} y2={props.p2.y} />;
 }
 
+function getTargetAttribute(target, attr)
+{
+	return (target && target.getAttribute && target.getAttribute(attr)) || '';
+}
+
+function getTargetType(target)
+{
+	return getTargetAttribute(target, 'type');
+}
+
 const PatternEditor = (props) => {
 	const {options, polygons, view} = props; 
 
@@ -109,22 +119,22 @@ const PatternEditor = (props) => {
 	};
 
 	const onDrag = (e, {delta, target}) => {
-		if(target.getAttribute('type') == 'poly-point')
+		if(getTargetType(target) == 'poly-point')
 		{
-			const polygon = polygons[target.getAttribute('p')];
+			const polygon = polygons[getTargetAttribute(target, 'p')];
 			const pts = polygon.getPoints();
-			const pt = pts[target.getAttribute('i')];
-			pts[target.getAttribute('i')] = pt.add(delta.div(view.zoom));
+			const pt = pts[getTargetAttribute(target, 'i')];
+			pts[getTargetAttribute(target, 'i')] = pt.add(delta.div(view.zoom));
 			polygon.setPoints(pts);
 		}
-		else if(target.getAttribute('type') == 'poly-vel')
+		else if(getTargetType(target) == 'poly-vel')
 		{
-			const polygon = polygons[target.getAttribute('p')];
+			const polygon = polygons[getTargetAttribute(target, 'p')];
 			polygon.setVel(polygon.getVel().add(delta.div(view.zoom)));
 		}
-		else if(target.getAttribute('type') == 'poly')
+		else if(getTargetType(target) == 'poly')
 		{
-			const polygon = polygons[target.getAttribute('p')];
+			const polygon = polygons[getTargetAttribute(target, 'p')];
 			polygon.setPos(polygon.getPos().add(delta.div(view.zoom)));
 		}
 		else
@@ -137,26 +147,25 @@ const PatternEditor = (props) => {
 	};
 
 	const onClick = (e, {currentPos}) => {
-		//polygons[0].addPoint(screenPosToSvgPos(currentPos));
 	};
 
 	const onDbClick = (e, {currentPos}) => {
 		const target = e.target;
-		if(target.getAttribute('type') == 'poly-line')
+		if(getTargetType(target) == 'poly-line')
 		{
-			const polygon = polygons[target.getAttribute('p')];
+			const polygon = polygons[getTargetAttribute(target, 'p')];
 			polygon.addPoint(screenPosToSvgPos(currentPos).sub(polygon.getPos()), parseInt(target.getAttribute('e')));
 		}
-		else if(target.getAttribute('type') == 'poly-point')
+		else if(getTargetType(target) == 'poly-point')
 		{
-			const polygon = polygons[target.getAttribute('p')];
+			const polygon = polygons[getTargetAttribute(target, 'p')];
 			const pts = polygon.getPoints();
 			if(pts.length <= 3)
 			{
 				return;
 			}
 
-			pts.splice(parseInt(target.getAttribute('i')), 1);
+			pts.splice(parseInt(getTargetAttribute(target, 'i')), 1);
 			polygon.setPoints(pts);
 		}
 	};
@@ -308,7 +317,7 @@ const PatternEditor = (props) => {
 
 							const showOverlap = collisionType == 'mtv' && axis.overlap != 0;
 
-							const isHovered = hover && hover.getAttribute('type') == 'axis' && hover.getAttribute('i') == i;
+							const isHovered = getTargetType(hover) == 'axis' &&  getTargetAttribute(hover, 'i') == i;
 
 							const axisColor = options.showMtv && collides.mtv == axis ? "red" : "black";
 
